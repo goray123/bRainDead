@@ -85,6 +85,8 @@ godot --path . -- --no-save --stage=4
 
 광고만 미리 보려면 `godot --path . -- --no-save --ad`로 실행하세요. 광고는 Windows x64에서 검증하는 데스크톱 기능입니다. 포함된 웹뷰는 macOS와 Linux용 런타임도 제공하며 Linux는 WebKitGTK가 필요합니다. Android·iOS·웹 내보내기는 현재 광고 재생 대상이 아닙니다. 데스크톱 내보내기 프리셋을 만들 때 Resources의 비리소스 파일 내보내기 필터에 `ads/*.html`을 포함해야 합니다.
 
+실제 영상 재생과 HTML 버튼까지 자동 검사하려면 창 모드·인터넷 연결 상태에서 `godot --path . --script res://tests/ad_playback_test.gd -- --no-save`를 실행하세요. 이 검사는 요청된 영상의 자동 재생, 5~1초 표시, 조기 클릭 차단, 0초 버튼 활성화, 스킵 후 복귀와 웹뷰 해제를 확인합니다.
+
 ## 현재 범위
 
 임시 벡터 그래픽과 합성 음향을 사용하는 플레이 가능한 프로토타입입니다. YouTube 삽입 재생을 광고 화면에 사용하며 실제 광고 SDK와 최종 아트·애니메이션은 포함하지 않습니다.
