@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="StageDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/stage_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+number = 1
+title = "평범한 퇴근길"
+description = "그냥 걸어갑니다.\n이 정도는 쉬울 줄 알았죠?"
+short_label = "WALK"
+length = 2400.0
+walk_speed = 86.0
+sign_rects = Array[Rect2]([Rect2(1080, 255, 230, 42), Rect2(1820, 280, 200, 42)])
+accent = Color(0.56, 0.87, 0.78, 1)

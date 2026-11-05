@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="StageDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/stage_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+number = 2
+title = "갑자기 급한 일"
+description = "분명히 걷고 있었는데.\n민트에게 무슨 일이 생겼나 봐요."
+short_label = "RUN"
+length = 2800.0
+walk_speed = 86.0
+run_speed = 205.0
+run_at = 920.0
+sign_rects = Array[Rect2]([Rect2(1260, 265, 190, 42), Rect2(2040, 245, 210, 42)])
+accent = Color(0.98, 0.73, 0.48, 1)

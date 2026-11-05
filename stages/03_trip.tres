@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="StageDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/stage_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+number = 3
+title = "앗, 발 조심"
+description = "이제 달리는 건 익숙하죠?\n멈추는 건요?"
+short_label = "TRIP"
+length = 2900.0
+walk_speed = 86.0
+run_speed = 205.0
+run_at = 920.0
+trip_at = 1490.0
+trip_duration = 2.6
+sign_rects = Array[Rect2]([Rect2(1190, 255, 190, 42), Rect2(1850, 275, 240, 42)])
+accent = Color(0.96, 0.55, 0.55, 1)
