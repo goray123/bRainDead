@@ -81,12 +81,24 @@ func _run() -> void:
 func _predict_mint_x(mint: MintWalker, seconds: float) -> float:
 	var x: float = mint.position.x
 	var has_run: bool = mint.has_run
+	var has_prepared_run: bool = mint.has_prepared_run
+	var run_prep_left: float = mint.run_prep_left
 	var has_tripped: bool = mint.has_tripped
 	var trip_left: float = mint.trip_left
 	var remaining: float = seconds
 	while remaining > 0.00001:
 		var step: float = minf(remaining, 1.0 / 60.0)
 		if not has_run and mint.definition.run_at >= 0.0 and x >= mint.definition.run_at:
+			if not has_prepared_run:
+				has_prepared_run = true
+				run_prep_left = maxf(0.0, mint.definition.run_prep_duration)
+			if run_prep_left > 0.0:
+				run_prep_left = maxf(0.0, run_prep_left - step)
+				if run_prep_left < 0.00001:
+					run_prep_left = 0.0
+					has_run = true
+				remaining -= step
+				continue
 			has_run = true
 		if not has_tripped and mint.definition.trip_at >= 0.0 and x >= mint.definition.trip_at:
 			has_tripped = true

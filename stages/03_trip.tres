@@ -12,6 +12,7 @@ length = 2900.0
 walk_speed = 86.0
 run_speed = 205.0
 run_at = 920.0
+run_prep_duration = 1.0
 trip_at = 1490.0
 trip_duration = 2.6
 sign_rects = Array[Rect2]([Rect2(1190, 255, 190, 42), Rect2(1850, 275, 240, 42)])

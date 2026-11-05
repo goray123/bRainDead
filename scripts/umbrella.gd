@@ -22,7 +22,7 @@ func _ready() -> void:
 	angular_damp = 1.9
 	angular_damp_mode = RigidBody2D.DAMP_MODE_REPLACE
 	collision_layer = 2
-	collision_mask = 1 | 2 | 16
+	collision_mask = 1 | 2
 	continuous_cd = RigidBody2D.CCD_MODE_CAST_SHAPE
 	can_sleep = false
 	var material := PhysicsMaterial.new()

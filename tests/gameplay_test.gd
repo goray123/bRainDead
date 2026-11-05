@@ -78,6 +78,22 @@ func _run() -> void:
 	await _settle()
 	hit = _rain_ray(level, 190.0)
 	_check(not hit.is_empty() and hit["collider"] == level.mint, "Crowd umbrella and pedestrian do not shelter Mint")
+	var visible_people: int = 0
+	var visual_only_canopies: bool = true
+	for pedestrian in level.crowd:
+		if pedestrian.position.x >= 0.0 and pedestrian.position.x <= 1280.0:
+			visible_people += 1
+		for body in pedestrian.find_children("*", "CollisionObject2D", true, false):
+			visual_only_canopies = visual_only_canopies and body == pedestrian.walker
+	_check(visible_people >= 25 and visible_people <= 45, "Stage 4 spreads the reduced crowd across the street (%d people visible)" % visible_people)
+	_check(visual_only_canopies, "Every crowd canopy has no physics body or hitbox")
+	var canopy_path := PhysicsShapeQueryParameters2D.new()
+	canopy_path.shape = (level.umbrella.get_node("Canopy") as CollisionShape2D).shape
+	canopy_path.transform = Transform2D(0.0, person.position + Vector2(-110, -115))
+	canopy_path.motion = Vector2(220, 0)
+	canopy_path.collision_mask = 1 | 2 | 4 | 8 | 16
+	var travel: PackedFloat32Array = level.get_world_2d().direct_space_state.cast_motion(canopy_path)
+	_check(travel.size() == 2 and is_equal_approx(travel[0], 1.0), "Player canopy can sweep straight through a crowd umbrella")
 	var first_positions: Array[float] = []
 	for pedestrian in level.crowd:
 		pedestrian.advance(6.25)
@@ -139,32 +155,8 @@ func _run() -> void:
 			level.rain.advance(STEP, 0.0, 1280.0)
 		_check(is_zero_approx(level.mint.wetness), "Scattered rain is intercepted by the canopy at angle %.2f" % canopy_angle)
 
-	var run_positions: Array[float] = []
-	var trip_positions: Array[float] = []
-	for attempt in range(2):
-		app._load_stage(2)
-		await _settle()
-		level = app.stage
-		level.set_physics_process(false)
-		level.mint.active = true
-		var trip_ticks: int = 0
-		for tick in range(2400):
-			var ran_before: bool = level.mint.has_run
-			var tripped_before: bool = level.mint.has_tripped
-			level.mint.advance(STEP)
-			if level.mint.has_run and not ran_before:
-				run_positions.append(level.mint.position.x)
-			if level.mint.has_tripped and not tripped_before:
-				trip_positions.append(level.mint.position.x)
-			if level.mint.trip_left > 0.0:
-				trip_ticks += 1
-				_check_if_moving_while_tripped(level.mint)
-			if level.mint.finished:
-				break
-		_check(trip_ticks >= 154 and trip_ticks <= 157, "Trip stops Mint for the configured 2.6 seconds")
-		_check(level.completion_pending, "Mint can reach the destination after getting up")
-	_check(run_positions.size() == 2 and is_equal_approx(run_positions[0], run_positions[1]), "Run event occurs at the same position on retry")
-	_check(trip_positions.size() == 2 and is_equal_approx(trip_positions[0], trip_positions[1]), "Trip event occurs at the same position on retry")
+	await _check_run_start_sequence(1)
+	await _check_run_start_sequence(2)
 
 	app._load_stage(0, true)
 	await _settle()
@@ -200,15 +192,15 @@ func _run() -> void:
 	app._show_ad()
 	var ad: VideoAd = app.ad_screen
 	ad.set_process(false)
-	_check(app.screen == app.Screen.AD and ad.remaining_seconds() == 5 and ad.skip_button.disabled, "Ad starts with a locked five-second skip countdown")
+	_check(app.screen == app.Screen.AD and ad.remaining_seconds() == 10 and ad.skip_button.disabled, "Ad starts with a locked ten-second skip countdown")
 	_check(not app.stage.active and (not app.sound.ambience.is_playing() or app.sound.ambience.stream_paused), "Ad pauses rain audio and stage simulation")
 	ad.request_skip()
-	_check(app.screen == app.Screen.AD, "Skip handler rejects attempts before five seconds")
-	for remaining in [4, 3, 2, 1]:
+	_check(app.screen == app.Screen.AD, "Skip handler rejects attempts before ten seconds")
+	for remaining in [9, 8, 7, 6, 5, 4, 3, 2, 1]:
 		ad._process(1.0)
 		_check(ad.remaining_seconds() == remaining and ad.skip_button.disabled and ad.skip_button.text == "%d초 뒤 스킵 가능" % remaining, "Ad counts down to %d with skip disabled" % remaining)
 	ad._process(0.99)
-	_check(ad.skip_button.disabled, "Skip remains locked just before five seconds")
+	_check(ad.skip_button.disabled, "Skip remains locked just before ten seconds")
 	ad._process(0.01)
 	_check(not ad.skip_button.disabled and ad.skip_button.text == "건너뛰기", "At zero the countdown becomes an enabled skip button")
 	ad._process(10.0)
@@ -218,16 +210,19 @@ func _run() -> void:
 	app._show_ad()
 	ad = app.ad_screen
 	ad.set_process(false)
-	_check(ad.remaining_seconds() == 5 and ad.skip_button.disabled, "The next ad starts a fresh five-second countdown")
+	_check(ad.remaining_seconds() == 10 and ad.skip_button.disabled, "The next ad starts a fresh ten-second countdown")
 	ad._on_web_message("invalid JSON")
 	ad._on_web_message('{"type":"player_error","code":100}')
 	ad._on_web_message('{"type":"skip"}')
 	await _settle()
 	_check(app.screen == app.Screen.AD and ad.skip_button.disabled, "Player errors and early web messages cannot bypass the skip gate")
 	ad._process(5.0)
+	ad.request_skip()
+	_check(app.screen == app.Screen.AD and ad.skip_button.disabled, "Five seconds no longer unlocks ad skipping")
+	ad._process(5.0)
 	ad._on_web_message('{"type":"skip"}')
 	await _settle()
-	_check(app.screen == app.Screen.SELECT and app.ad_screen == null, "Web skip button returns to stage selection after five seconds")
+	_check(app.screen == app.Screen.SELECT and app.ad_screen == null, "Web skip button returns to stage selection after ten seconds")
 	_check(_count_disabled_buttons(app.ui) == 2, "Stage 1 clear unlocks exactly stage 2")
 	app.save_path = "user://integration-test-progress.cfg"
 	app.disable_save = false
@@ -245,6 +240,56 @@ func _run() -> void:
 	await process_frame
 	print("RESULT: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures > 0 else 0)
+
+
+func _check_run_start_sequence(stage_index: int) -> void:
+	var prep_positions: Array[float] = []
+	var run_positions: Array[float] = []
+	var trip_positions: Array[float] = []
+	for attempt in range(2):
+		app._load_stage(stage_index)
+		await _settle()
+		var level: RainStage = app.stage
+		level.set_physics_process(false)
+		var mint: MintWalker = level.mint
+		mint.active = true
+		var prep_ticks: int = 0
+		var trip_ticks: int = 0
+		var stays_still: bool = true
+		var announces_prep: bool = true
+		for tick in range(2400):
+			var prepared_before: bool = mint.has_prepared_run
+			var preparing_before: bool = mint.run_prep_left > 0.0
+			var ran_before: bool = mint.has_run
+			var tripped_before: bool = mint.has_tripped
+			var previous_x: float = mint.position.x
+			mint.advance(STEP)
+			if mint.has_prepared_run and not prepared_before:
+				prep_positions.append(mint.position.x)
+			if mint.run_prep_left > 0.0 or preparing_before:
+				prep_ticks += 1
+				stays_still = stays_still and is_zero_approx(mint.speed) and is_equal_approx(mint.position.x, previous_x)
+			if mint.run_prep_left > 0.0:
+				announces_prep = announces_prep and mint.behavior == "출발 준비!" and not mint.has_run
+			if mint.has_run and not ran_before:
+				run_positions.append(mint.position.x)
+				_check((mint.shape_node.shape as RectangleShape2D).size == Vector2(25, 66), "Stage %d restores upright rain hitbox on sprint start" % (stage_index + 1))
+			if mint.has_tripped and not tripped_before:
+				trip_positions.append(mint.position.x)
+			if mint.trip_left > 0.0:
+				trip_ticks += 1
+				_check_if_moving_while_tripped(mint)
+			if mint.finished:
+				break
+		_check(prep_ticks > 0 and absf(prep_ticks * STEP - level.definition.run_prep_duration) <= STEP, "Stage %d holds the sprinter pose for the configured duration" % (stage_index + 1))
+		_check(stays_still and announces_prep, "Stage %d stops and announces preparation before running" % (stage_index + 1))
+		if stage_index == 2:
+			_check(trip_ticks >= 154 and trip_ticks <= 157, "Trip stops Mint for the configured 2.6 seconds")
+		_check(level.completion_pending, "Stage %d reaches home after preparing and running" % (stage_index + 1))
+	_check(prep_positions.size() == 2 and is_equal_approx(prep_positions[0], prep_positions[1]), "Stage %d prepares at the same position on retry" % (stage_index + 1))
+	_check(run_positions.size() == 2 and is_equal_approx(run_positions[0], run_positions[1]), "Stage %d runs at the same position on retry" % (stage_index + 1))
+	if stage_index == 2:
+		_check(trip_positions.size() == 2 and is_equal_approx(trip_positions[0], trip_positions[1]), "Trip event occurs at the same position on retry")
 
 
 func _check_umbrella_motion() -> void:

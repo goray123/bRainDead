@@ -12,5 +12,6 @@ length = 2800.0
 walk_speed = 86.0
 run_speed = 205.0
 run_at = 920.0
+run_prep_duration = 1.0
 sign_rects = Array[Rect2]([Rect2(1260, 265, 190, 42), Rect2(2040, 245, 210, 42)])
 accent = Color(0.98, 0.73, 0.48, 1)

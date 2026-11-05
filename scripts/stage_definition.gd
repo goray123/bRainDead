@@ -10,6 +10,7 @@ extends Resource
 @export var walk_speed: float = 86.0
 @export var run_speed: float = 210.0
 @export var run_at: float = -1.0
+@export var run_prep_duration: float = 1.0
 @export var trip_at: float = -1.0
 @export var trip_duration: float = 2.6
 @export var umbrella_start: Vector2 = Vector2(190, 425)

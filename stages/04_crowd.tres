@@ -10,6 +10,6 @@ description = "다들 우산이 있네요.\n그런데 민트는 어디 있죠?"
 short_label = "CROWD"
 length = 3100.0
 walk_speed = 90.0
-crowd_count = 21
+crowd_count = 84
 sign_rects = Array[Rect2]([Rect2(1000, 270, 240, 44), Rect2(1680, 245, 200, 42), Rect2(2340, 275, 230, 42)])
 accent = Color(0.70, 0.65, 0.94, 1)

@@ -72,8 +72,8 @@ func _run() -> void:
 	ad.web_view.connect("ipc_message", _on_message)
 	var started: bool = await _wait_for(func() -> bool: return ad.playback_started or ad.last_player_error != 0)
 	_check(started and ad.playback_started, "Requested YouTube video autoplays in the native game WebView")
-	for remaining in [5, 4, 3, 2, 1]:
-		if remaining < 5:
+	for remaining in [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]:
+		if remaining < 10:
 			ad._process(1.0)
 		await _read_button(ad)
 		_check(report.get("text") == "%d초 뒤 스킵 가능" % remaining and report.get("disabled") == true, "Native HTML shows a locked %d-second countdown" % remaining)

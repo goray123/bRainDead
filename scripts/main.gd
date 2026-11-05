@@ -145,7 +145,7 @@ func _show_select() -> void:
 	_label(ui, "THE WAY HOME", Vector2(90, 49), 12, MINT)
 	_label(ui, "오늘도 무사히?", Vector2(86, 76), 40, PAPER, 0, true)
 	_label(ui, "이전 길을 통과해야 다음 길이 열립니다.", Vector2(90, 139), 15, MUTED)
-	var subtitles: Array[String] = ["일정한 걸음, 제멋대로인 우산", "예고 없는 가속", "가속했으면 멈추기도 해야지", "민트를 찾아라"]
+	var subtitles: Array[String] = ["일정한 걸음, 제멋대로인 우산", "자세를 낮추면, 곧 출발", "가속했으면 멈추기도 해야지", "민트를 찾아라"]
 	for i in range(STAGES.size()):
 		var data: StageDefinition = STAGES[i]
 		var unlocked: bool = i == 0 or (completed & (1 << (i - 1))) != 0

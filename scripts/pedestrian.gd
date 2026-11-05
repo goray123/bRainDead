@@ -13,7 +13,8 @@ var walker: MintWalker
 
 func configure(person_index: int, level_length: float) -> void:
 	index = person_index
-	route_start = 370.0 + float(index % 7) * 380.0
+	# Spread the larger crowd over the whole street, including the entrance.
+	route_start = 40.0 + float(index % 14) * maxf(0.0, level_length - 620.0) / 13.0
 	route_span = 470.0 + float(index % 4) * 50.0
 	route_span = minf(route_span, level_length - route_start - 95.0)
 	route_speed = 38.0 + float((index * 11) % 37)
@@ -25,19 +26,7 @@ func configure(person_index: int, level_length: float) -> void:
 	walker.is_mint = false
 	walker.coat_color = COLORS[index % COLORS.size()].darkened(0.12)
 	add_child(walker)
-	var canopy_body := AnimatableBody2D.new()
-	canopy_body.name = "CrowdUmbrella"
-	canopy_body.position = Vector2(0, -115 - (index % 3) * 12)
-	# Crowd canopies obstruct sight / the player umbrella, but rain ignores them.
-	canopy_body.collision_layer = 16
-	canopy_body.collision_mask = 0
-	canopy_body.sync_to_physics = false
-	add_child(canopy_body)
-	var shape := CollisionShape2D.new()
-	var polygon := ConvexPolygonShape2D.new()
-	polygon.points = PackedVector2Array([Vector2(-60, 0), Vector2(-46, -24), Vector2(0, -34), Vector2(46, -24), Vector2(60, 0)])
-	shape.shape = polygon
-	canopy_body.add_child(shape)
+	# Canopies are visual only: no physics body, collision shape, or hitbox.
 	queue_redraw()
 	advance(0.0)
 

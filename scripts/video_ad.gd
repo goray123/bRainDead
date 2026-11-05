@@ -1,11 +1,11 @@
 class_name VideoAd
 extends Control
-## Native YouTube playback with a game-owned five-second skip gate.
+## Native YouTube playback with a game-owned ten-second skip gate.
 
 signal skipped
 
 const VIDEO_ID: String = "liCoGtVaw_M"
-const SKIP_DELAY: float = 5.0
+const SKIP_DELAY: float = 10.0
 const PAGE_URL: String = "res://ads/youtube_ad.html"
 
 var elapsed: float = 0.0
