@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>bRainDead 광고</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #080d12; color: #ecede2; }
+    body { display: flex; flex-direction: column; }
+    header { min-height: 86px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 28px 20px 32px; }
+    .brand { color: #9bb0b5; font-size: 13px; letter-spacing: .1em; }
+    .actions { display: flex; align-items: center; gap: 18px; }
+    #status { color: #9bb0b5; font-size: 14px; }
+    button { border: 1px solid #91dac1; border-radius: 7px; background: #91dac1; color: #10232d; min-width: 232px; height: 46px; padding: 0 20px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+    button:hover:enabled { background: #b0e5d3; }
+    button:focus-visible { outline: 2px solid #f5ca87; outline-offset: 3px; }
+    button:disabled { cursor: default; color: #9bb0b5; border-color: #344c56; background: #172b35; }
+    main { min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; }
+    #player-frame { width: min(100vw, calc((100vh - 86px) * 16 / 9)); aspect-ratio: 16 / 9; }
+    #player, iframe { display: block; width: 100%; height: 100%; border: 0; }
+    @media (max-width: 680px) { #status { display: none; } header { padding-inline: 18px; gap: 12px; } button { min-width: 190px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand">ADVERTISEMENT</span>
+    <div class="actions">
+      <span id="status" role="status">광고 영상을 불러오는 중입니다.</span>
+      <button id="skip" type="button" disabled>5초 뒤 스킵 가능</button>
+    </div>
+  </header>
+  <main><div id="player-frame"><div id="player"></div></div></main>
+  <script>
+    (() => {
+      const skip = document.getElementById('skip');
+      const status = document.getElementById('status');
+      let player = null;
+      let configuration = null;
+      let apiRequested = false;
+      let stopped = false;
+
+      function send(type, extra = {}) {
+        window.ipc.postMessage(JSON.stringify({ type, ...extra }));
+      }
+
+      function setRemaining(value) {
+        const remaining = Math.max(0, Math.ceil(value));
+        skip.disabled = remaining > 0;
+        skip.textContent = remaining > 0 ? `${remaining}초 뒤 스킵 가능` : '건너뛰기';
+      }
+
+      function showError(code) {
+        if (stopped) return;
+        status.textContent = '영상을 재생할 수 없습니다. 건너뛰기로 계속하세요.';
+        send('player_error', { code });
+      }
+
+      function createPlayer() {
+        if (stopped || player || !configuration || !window.YT?.Player) return;
+        player = new YT.Player('player', {
+          videoId: configuration.videoId,
+          width: '100%',
+          height: '100%',
+          playerVars: { autoplay: 1, playsinline: 1, rel: 0, origin: location.origin },
+          events: {
+            onReady(event) {
+              if (stopped) return;
+              if (configuration.muted) event.target.mute();
+              event.target.playVideo();
+            },
+            onStateChange(event) {
+              if (stopped) return;
+              if (event.data === YT.PlayerState.PLAYING) {
+                status.textContent = '';
+                send('playing');
+              } else if (event.data === YT.PlayerState.ENDED) {
+                status.textContent = '시청이 끝났습니다. 건너뛰기로 계속하세요.';
+              }
+            },
+            onAutoplayBlocked() {
+              status.textContent = '영상의 재생 버튼을 눌러 시작하세요.';
+            },
+            onError(event) { showError(event.data); }
+          }
+        });
+        document.getElementById('player').setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+        document.getElementById('player').setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      }
+
+      window.onYouTubeIframeAPIReady = createPlayer;
+      window.ad = {
+        configure(options) {
+          if (stopped) return;
+          configuration = options;
+          setRemaining(options.remaining);
+          if (!apiRequested) {
+            apiRequested = true;
+            const script = document.createElement('script');
+            script.src = 'https://www.youtube.com/iframe_api';
+            script.onerror = () => showError(-1);
+            document.head.appendChild(script);
+          }
+          createPlayer();
+        },
+        setRemaining,
+        stop() {
+          stopped = true;
+          if (player) {
+            player.destroy();
+            player = null;
+          }
+        }
+      };
+      skip.addEventListener('click', () => {
+        if (!skip.disabled && !stopped) send('skip');
+      });
+      window.addEventListener('pagehide', () => window.ad.stop());
+      send('ready');
+    })();
+  </script>
+</body>
+</html>

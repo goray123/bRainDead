@@ -12,6 +12,7 @@ const PAPER := Color("ecede2")
 const MUTED := Color("9bb0b5")
 const MINT := Color("91dac1")
 const INK := Color("10232d")
+const VIDEO_AD: GDScript = preload("res://scripts/video_ad.gd")
 var save_path: String = "user://progress.cfg"
 
 var screen: Screen = Screen.TITLE
@@ -35,8 +36,7 @@ var wind_right_label: Label
 var timer_label: Label
 var behavior_label: Label
 var sound_button: Button
-var ad_elapsed: float = 0.0
-var ad_label: Label
+var ad_screen: VideoAd
 var disable_save: bool = false
 
 
@@ -68,9 +68,16 @@ func _ready() -> void:
 			_load_stage(index)
 		elif argument == "--select":
 			_show_select()
+		elif argument == "--ad":
+			_show_ad()
 
 
 func _clear_ui() -> void:
+	if is_instance_valid(ad_screen):
+		ad_screen.stop()
+		ad_screen = null
+		if is_instance_valid(sound):
+			sound.ambience.stream_paused = false
 	for child in ui.get_children():
 		ui.remove_child(child)
 		child.queue_free()
@@ -78,7 +85,6 @@ func _clear_ui() -> void:
 	wet_fill = null
 	wet_label = null
 	progress_fill = null
-	ad_label = null
 	get_viewport().gui_release_focus()
 
 
@@ -276,13 +282,14 @@ func _on_cleared() -> void:
 func _show_ad() -> void:
 	screen = Screen.AD
 	_clear_ui()
-	ad_elapsed = 0.0
-	_rect(ui, Vector2.ZERO, Vector2(1280, 720), Color("080d12"))
-	_label(ui, "ADVERTISEMENT", Vector2(545, 240), 13, Color("68747c"))
-	_label(ui, "여기는 광고 자리입니다.", Vector2(425, 292), 30, PAPER, 0, true)
-	_label(ui, "지금은 비를 잠깐 멈춰둘게요.", Vector2(477, 354), 16, MUTED)
-	ad_label = _label(ui, "스테이지 선택으로 이동합니다 · 2", Vector2(485, 429), 14, MINT)
-	print("[Ad placeholder] Returning to stage select in 2 seconds.")
+	if is_instance_valid(stage):
+		stage.stop()
+		stage.attract = false
+	sound.ambience.stream_paused = true
+	ad_screen = VIDEO_AD.new()
+	ad_screen.muted = sound.muted
+	ad_screen.skipped.connect(_show_select)
+	ui.add_child(ad_screen)
 
 
 func _on_behavior_changed(value: String) -> void:
@@ -293,13 +300,7 @@ func _on_behavior_changed(value: String) -> void:
 		sound.play_cue("trip")
 
 
-func _process(delta: float) -> void:
-	if screen == Screen.AD:
-		ad_elapsed += delta
-		if is_instance_valid(ad_label):
-			ad_label.text = "스테이지 선택으로 이동합니다 · %d" % maxi(1, int(ceil(2.0 - ad_elapsed)))
-		if ad_elapsed >= 2.0:
-			_show_select()
+func _process(_delta: float) -> void:
 	if screen not in [Screen.PLAYING, Screen.PAUSED, Screen.READY]:
 		return
 	if is_instance_valid(wet_fill) and is_instance_valid(stage):

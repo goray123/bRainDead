@@ -88,10 +88,22 @@ func _run() -> void:
 		level.crowd[i].advance(6.25)
 		same_routes = same_routes and is_equal_approx(level.crowd[i].position.x, first_positions[i])
 	_check(same_routes, "Every pedestrian follows a reproducible route")
-	var original_drops: Array[Vector2] = level.rain.drops.duplicate()
+	var original_drops: Array[Vector3] = level.rain.drops.duplicate()
 	level.rain.reset()
-	_check(original_drops == level.rain.drops, "Rain starts from the identical fixed pattern")
+	_check(original_drops != level.rain.drops, "Rain gets a new scattered pattern on retry")
+	level.rain.reset(41)
+	var seeded_drops: Array[Vector3] = level.rain.drops.duplicate()
+	level.rain.enabled = true
+	for i in range(12):
+		level.rain.advance(STEP, 0.0, 1280.0)
+	var advanced_drops: Array[Vector3] = level.rain.drops.duplicate()
+	level.rain.reset(41)
+	_check(seeded_drops == level.rain.drops, "A test seed reproduces initial rain positions and speeds")
+	for i in range(12):
+		level.rain.advance(STEP, 0.0, 1280.0)
+	_check(advanced_drops == level.rain.drops, "A test seed reproduces moving rain and future emissions")
 	# Exercise actual drop collisions at two densities, not a mocked coverage flag.
+	level.rain.reset(41)
 	level.mint.active = true
 	level.rain.enabled = true
 	level.mint.wetness = 0.0
@@ -99,8 +111,8 @@ func _run() -> void:
 	for i in range(60):
 		level.rain.advance(STEP, 0.0, 1280.0)
 	var normal_wetness: float = level.mint.wetness
-	level.rain.reset()
-	var duplicate_drops: Array[Vector2] = level.rain.drops.duplicate()
+	level.rain.reset(41)
+	var duplicate_drops: Array[Vector3] = level.rain.drops.duplicate()
 	level.rain.drops.append_array(duplicate_drops)
 	level.rain.drops.append_array(duplicate_drops)
 	level.mint.wetness = 0.0
@@ -109,6 +121,23 @@ func _run() -> void:
 		level.rain.advance(STEP, 0.0, 1280.0)
 	_check(absf(level.mint.wetness - normal_wetness) <= STEP, "Tripling rain density does not triple wetness")
 	_check(normal_wetness > 0.90 and normal_wetness <= 1.00001, "Actual uncovered drops produce one second per second (measured %.4f)" % normal_wetness)
+	for pattern_seed in [7, 123, 4096]:
+		level.rain.reset(pattern_seed)
+		level.mint.wetness = 0.0
+		level.mint.rain_contact_age = 100.0
+		for i in range(60):
+			level.rain.advance(STEP, 0.0, 1280.0)
+		_check(level.mint.wetness > 0.90, "Random rain keeps uncovered wetness consistent (seed %d: %.4f)" % [pattern_seed, level.mint.wetness])
+	level.umbrella.position.x = 190.0
+	for canopy_angle in [0.0, PI]:
+		level.umbrella.rotation = canopy_angle
+		await _settle()
+		level.rain.reset(123)
+		level.mint.wetness = 0.0
+		level.mint.rain_contact_age = 100.0
+		for i in range(60):
+			level.rain.advance(STEP, 0.0, 1280.0)
+		_check(is_zero_approx(level.mint.wetness), "Scattered rain is intercepted by the canopy at angle %.2f" % canopy_angle)
 
 	var run_positions: Array[float] = []
 	var trip_positions: Array[float] = []
@@ -140,6 +169,22 @@ func _run() -> void:
 	app._load_stage(0, true)
 	await _settle()
 	_check(app.screen == app.Screen.PLAYING, "Start enters gameplay")
+	for key in [KEY_LEFT, KEY_RIGHT, KEY_A, KEY_D]:
+		var key_event := InputEventKey.new()
+		key_event.keycode = key
+		key_event.physical_keycode = key
+		key_event.pressed = true
+		Input.parse_input_event(key_event)
+		Input.flush_buffered_events()
+		await _settle()
+		var expected: float = -1.0 if key in [KEY_LEFT, KEY_A] else 1.0
+		_check(is_equal_approx(app.stage.umbrella.wind, expected), "Keyboard key %s drives wind" % OS.get_keycode_string(key))
+		var release_event := key_event.duplicate() as InputEventKey
+		release_event.pressed = false
+		Input.parse_input_event(release_event)
+		Input.flush_buffered_events()
+		await _settle()
+		_check(is_zero_approx(app.stage.umbrella.wind), "Releasing %s stops wind input" % OS.get_keycode_string(key))
 	app._pause()
 	var paused_time: float = app.stage.elapsed
 	await _settle()
@@ -153,8 +198,36 @@ func _run() -> void:
 	app._on_cleared()
 	_check(app.completed == 1, "Clear records completion")
 	app._show_ad()
-	app._process(2.01)
-	_check(app.screen == app.Screen.SELECT, "Ad placeholder returns to stage selection")
+	var ad: VideoAd = app.ad_screen
+	ad.set_process(false)
+	_check(app.screen == app.Screen.AD and ad.remaining_seconds() == 5 and ad.skip_button.disabled, "Ad starts with a locked five-second skip countdown")
+	_check(not app.stage.active and (not app.sound.ambience.is_playing() or app.sound.ambience.stream_paused), "Ad pauses rain audio and stage simulation")
+	ad.request_skip()
+	_check(app.screen == app.Screen.AD, "Skip handler rejects attempts before five seconds")
+	for remaining in [4, 3, 2, 1]:
+		ad._process(1.0)
+		_check(ad.remaining_seconds() == remaining and ad.skip_button.disabled and ad.skip_button.text == "%d초 뒤 스킵 가능" % remaining, "Ad counts down to %d with skip disabled" % remaining)
+	ad._process(0.99)
+	_check(ad.skip_button.disabled, "Skip remains locked just before five seconds")
+	ad._process(0.01)
+	_check(not ad.skip_button.disabled and ad.skip_button.text == "건너뛰기", "At zero the countdown becomes an enabled skip button")
+	ad._process(10.0)
+	_check(app.screen == app.Screen.AD, "Ad waits for the player to press skip after the countdown")
+	ad.skip_button.pressed.emit()
+	_check(app.screen == app.Screen.SELECT and app.ad_screen == null and not app.sound.ambience.stream_paused, "Skip button returns to stage selection and restores rain audio")
+	app._show_ad()
+	ad = app.ad_screen
+	ad.set_process(false)
+	_check(ad.remaining_seconds() == 5 and ad.skip_button.disabled, "The next ad starts a fresh five-second countdown")
+	ad._on_web_message("invalid JSON")
+	ad._on_web_message('{"type":"player_error","code":100}')
+	ad._on_web_message('{"type":"skip"}')
+	await _settle()
+	_check(app.screen == app.Screen.AD and ad.skip_button.disabled, "Player errors and early web messages cannot bypass the skip gate")
+	ad._process(5.0)
+	ad._on_web_message('{"type":"skip"}')
+	await _settle()
+	_check(app.screen == app.Screen.SELECT and app.ad_screen == null, "Web skip button returns to stage selection after five seconds")
 	_check(_count_disabled_buttons(app.ui) == 2, "Stage 1 clear unlocks exactly stage 2")
 	app.save_path = "user://integration-test-progress.cfg"
 	app.disable_save = false
@@ -166,11 +239,42 @@ func _run() -> void:
 	app._load_progress()
 	_check(app.completed == 3 and app.attempts == [2, 3, 0, 0], "Completion and attempts persist across reload")
 	app.disable_save = true
+	await _check_umbrella_motion()
 	app.queue_free()
 	await process_frame
 	await process_frame
 	print("RESULT: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures > 0 else 0)
+
+
+func _check_umbrella_motion() -> void:
+	# Measure actual engine motion in free space, without stage collisions.
+	var falling := RainStage.UMBRELLA_SCENE.instantiate() as WindUmbrella
+	falling.position = Vector2(-2000, -2000)
+	root.add_child(falling)
+	falling.collision_mask = 0
+	falling.active = true
+	falling.freeze = false
+	falling.linear_velocity = Vector2(200, 0)
+	for i in range(60):
+		await physics_frame
+	_check(falling.linear_velocity.x > 160.0 and falling.linear_velocity.x < 200.0, "Released umbrella retains over 80 percent of horizontal speed after one second (%.1f)" % falling.linear_velocity.x)
+	_check(falling.position.x > -1840.0, "Momentum carries the released umbrella over 160 pixels")
+	_check(falling.linear_velocity.y > 300.0 and falling.position.y > -1850.0, "Unpowered umbrella falls rapidly (%.1f px/s)" % falling.linear_velocity.y)
+	falling.queue_free()
+	var rising := RainStage.UMBRELLA_SCENE.instantiate() as WindUmbrella
+	rising.position = Vector2(-3000, -3000)
+	root.add_child(rising)
+	rising.collision_mask = 0
+	rising.active = true
+	rising.freeze = false
+	rising.wind = 1.0
+	for i in range(60):
+		await physics_frame
+	var rise_distance: float = -3000.0 - rising.position.y
+	_check(rising.linear_velocity.y < -200.0 and rising.linear_velocity.y >= -215.0 and rise_distance > 110.0 and rise_distance < 150.0, "Reduced lift reaches about 210 px/s and rises about 130 pixels in one second (%.1f px/s, %.1f px)" % [-rising.linear_velocity.y, rise_distance])
+	_check(rising.linear_velocity.x > 300.0, "Ascent preserves horizontal speed (%.1f px/s)" % rising.linear_velocity.x)
+	rising.queue_free()
 
 
 func _check_if_moving_while_tripped(mint: MintWalker) -> void:

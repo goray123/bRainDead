@@ -3,9 +3,11 @@ extends RigidBody2D
 ## Rotation never disables rain blocking, including when upside down.
 
 @export var horizontal_force: float = 480.0
-@export var lift_force: float = 154.0
-@export var turn_force: float = 640.0
-@export var max_speed: float = 330.0
+@export var lift_force: float = 688.8
+@export var turn_force: float = 1600.0
+@export var max_horizontal_speed: float = 330.0
+@export var max_rise_speed: float = 210.0
+@export var max_fall_speed: float = 850.0
 @export var canopy_color: Color = Color("f3be68")
 var wind: float = 0.0
 var active: bool = false
@@ -14,8 +16,8 @@ var active: bool = false
 func _ready() -> void:
 	mass = 1.0
 	inertia = 1300.0
-	gravity_scale = 0.28
-	linear_damp = 1.6
+	gravity_scale = 2.4
+	linear_damp = 0.18
 	linear_damp_mode = RigidBody2D.DAMP_MODE_REPLACE
 	angular_damp = 1.9
 	angular_damp_mode = RigidBody2D.DAMP_MODE_REPLACE
@@ -38,7 +40,9 @@ func _physics_process(_delta: float) -> void:
 
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
-	state.linear_velocity = state.linear_velocity.limit_length(max_speed)
+	# Fast vertical motion must not consume the horizontal speed budget.
+	state.linear_velocity.x = clampf(state.linear_velocity.x, -max_horizontal_speed, max_horizontal_speed)
+	state.linear_velocity.y = clampf(state.linear_velocity.y, -max_rise_speed, max_fall_speed)
 	state.angular_velocity = clampf(state.angular_velocity, -2.2, 2.2)
 
 
