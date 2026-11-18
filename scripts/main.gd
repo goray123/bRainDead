@@ -7,6 +7,7 @@ const STAGES: Array[StageDefinition] = [
 	preload("res://stages/02_run.tres"),
 	preload("res://stages/03_trip.tres"),
 	preload("res://stages/04_crowd.tres"),
+	preload("res://stages/05_reverse.tres"),
 ]
 const PAPER := Color("ecede2")
 const MUTED := Color("9bb0b5")
@@ -19,7 +20,7 @@ var screen: Screen = Screen.TITLE
 var stage: RainStage
 var selected: int = 0
 var completed: int = 0
-var attempts: Array[int] = [0, 0, 0, 0]
+var attempts: Array[int] = [0, 0, 0, 0, 0]
 var ui: Control
 var overlay: Control
 var layer: CanvasLayer
@@ -103,6 +104,7 @@ func _make_stage(index: int, title_preview: bool = false) -> void:
 	stage.failed.connect(_on_failed)
 	stage.cleared.connect(_on_cleared)
 	stage.behavior_changed.connect(_on_behavior_changed)
+	stage.controls_inverted.connect(_on_controls_inverted)
 
 
 func _show_title() -> void:
@@ -131,7 +133,7 @@ func _show_title() -> void:
 	_button(ui, "게임 시작    →", Vector2(77, 513), Vector2(250, 58), _show_select, true)
 	_label(ui, "A / D  또는  ← / →   바람 조작", Vector2(78, 590), 14, MUTED)
 	_label(ui, "젖으면 끝. 다시 하면 그만.", Vector2(78, 617), 13, Color("70898f"))
-	_label(ui, "01—04  /  NO LUCK. JUST WIND.", Vector2(920, 40), 12, MUTED)
+	_label(ui, "01—05  /  NO LUCK. JUST WIND.", Vector2(920, 40), 12, MUTED)
 	_label(ui, "MINT", Vector2(942, 624), 11, MINT)
 	_label(ui, "버려진 우산 하나, 책임은 전부 당신에게.", Vector2(830, 671), 13, MUTED)
 	_sound_control()
@@ -145,23 +147,23 @@ func _show_select() -> void:
 	_label(ui, "THE WAY HOME", Vector2(90, 49), 12, MINT)
 	_label(ui, "오늘도 무사히?", Vector2(86, 76), 40, PAPER, 0, true)
 	_label(ui, "이전 길을 통과해야 다음 길이 열립니다.", Vector2(90, 139), 15, MUTED)
-	var subtitles: Array[String] = ["일정한 걸음, 제멋대로인 우산", "자세를 낮추면, 곧 출발", "가속했으면 멈추기도 해야지", "민트를 찾아라"]
+	var subtitles: Array[String] = ["일정한 걸음, 제멋대로인 우산", "자세를 낮추면, 곧 출발", "가속했으면 멈추기도 해야지", "민트를 찾아라", "손가락이 머리를 못 따라가"]
 	for i in range(STAGES.size()):
 		var data: StageDefinition = STAGES[i]
 		var unlocked: bool = i == 0 or (completed & (1 << (i - 1))) != 0
 		var done: bool = (completed & (1 << i)) != 0
-		var at := Vector2(90 + (i % 2) * 558, 196 + (i / 2) * 202)
-		var card := _panel(ui, at, Vector2(538, 181), Color("1a313c") if unlocked else Color("152a34"))
+		var at := Vector2(90 + (i % 3) * 372, 196 + (i / 3) * 202)
+		var card := _panel(ui, at, Vector2(352, 181), Color("1a313c") if unlocked else Color("152a34"))
 		_rect(card, Vector2(0, 22), Vector2(3, 42), data.accent if unlocked else Color("3d535d"))
 		_label(card, "%02d" % data.number, Vector2(24, 18), 40, data.accent if unlocked else Color("4d656f"), 0, true)
 		_label(card, data.short_label, Vector2(101, 29), 12, MUTED if unlocked else Color("536a74"))
 		_label(card, data.title, Vector2(101, 49), 23, PAPER if unlocked else Color("6e838b"), 0, true)
 		_label(card, subtitles[i], Vector2(27, 101), 14, MUTED if unlocked else Color("536a74"))
-		_label(card, "CLEAR ✓" if done else ("OPEN" if unlocked else "LOCKED"), Vector2(416, 27), 11, MINT if done else MUTED)
-		var button := _button(card, "다시 걷기   ↗" if done else ("들어가기   ↗" if unlocked else "이전 스테이지 클리어 필요"), Vector2(24, 133), Vector2(490, 34), func() -> void: _load_stage(i), false)
+		_label(card, "CLEAR ✓" if done else ("OPEN" if unlocked else "LOCKED"), Vector2(244, 27), 11, MINT if done else MUTED)
+		var button := _button(card, "다시 걷기   ↗" if done else ("들어가기   ↗" if unlocked else "이전 스테이지 클리어 필요"), Vector2(24, 133), Vector2(304, 34), func() -> void: _load_stage(i), false)
 		button.disabled = not unlocked
 	_button(ui, "← 타이틀", Vector2(90, 637), Vector2(160, 39), _show_title)
-	_label(ui, "%d / 4  길을 통과했습니다" % _completed_count(), Vector2(937, 649), 13, MUTED)
+	_label(ui, "%d / %d  길을 통과했습니다" % [_completed_count(), STAGES.size()], Vector2(937, 649), 13, MUTED)
 	_sound_control()
 
 
@@ -257,7 +259,7 @@ func _on_failed() -> void:
 	var panel := _panel(overlay, Vector2(370, 177), Vector2(540, 360), Color("172d37"))
 	_label(panel, "SOAKED  /  TRY %02d" % attempts[selected], Vector2(35, 27), 12, Color("ed9792"))
 	_label(panel, "민트가 젖었습니다.", Vector2(32, 64), 34, PAPER, 0, true)
-	var messages: Array[String] = ["우산은 거기 있는데, 민트는 여기 있네요.", "민트가 뛴다고는 말 안 했던가요?", "넘어질 줄은 민트도 몰랐을 거예요.", "남의 우산은 당신 편이 아닙니다."]
+	var messages: Array[String] = ["우산은 거기 있는데, 민트는 여기 있네요.", "민트가 뛴다고는 말 안 했던가요?", "넘어질 줄은 민트도 몰랐을 거예요.", "남의 우산은 당신 편이 아닙니다.", "손은 이미 반대로 누르고 있었죠."]
 	_label(panel, messages[selected], Vector2(36, 132), 16, MUTED, 470)
 	_label(panel, "진행 %d%%   ·   젖음 2.00초" % int(_progress() * 100.0), Vector2(36, 180), 14, Color("b1c6cb"))
 	_button(panel, "다시 도전    R", Vector2(35, 233), Vector2(470, 50), _retry, true)
@@ -276,7 +278,7 @@ func _on_cleared() -> void:
 	_label(panel, "민트는 무사합니다. 당신은요?", Vector2(36, 133), 17, MUTED)
 	_label(panel, "%s   ·   도전 %d회   ·   남은 젖음 %.2f초" % [_time_text(stage.elapsed), attempts[selected], stage.mint.wetness], Vector2(36, 182), 14, PAPER)
 	_button(panel, "다음으로    →", Vector2(35, 237), Vector2(470, 50), _show_ad, true)
-	_label(panel, "모든 길을 통과했습니다. 수고했어요, 바람." if _completed_count() == 4 else "다음 스테이지가 열렸습니다.", Vector2(36, 309), 13, MINT)
+	_label(panel, "모든 길을 통과했습니다. 수고했어요, 바람." if _completed_count() == STAGES.size() else "다음 스테이지가 열렸습니다.", Vector2(36, 309), 13, MINT)
 
 
 func _show_ad() -> void:
@@ -298,6 +300,17 @@ func _on_behavior_changed(value: String) -> void:
 		behavior_label.modulate = Color("f1bd78") if value != "걷는 중" else PAPER
 	if value == "넘어짐!":
 		sound.play_cue("trip")
+
+
+func _on_controls_inverted(inverted: bool) -> void:
+	var text_value: String = "조작 반전!" if inverted else "조작 복구"
+	if is_instance_valid(behavior_label):
+		behavior_label.text = text_value
+		behavior_label.modulate = Color("cdc4f2") if inverted else PAPER
+	if is_instance_valid(wind_left_label) and is_instance_valid(wind_right_label):
+		wind_left_label.text = "[ A / ← ]  오른바람" if inverted else "[ A / ← ]  왼바람"
+		wind_right_label.text = "[ D / → ]  왼바람" if inverted else "[ D / → ]  오른바람"
+	sound.play_cue("trip" if inverted else "start")
 
 
 func _process(_delta: float) -> void:
@@ -353,7 +366,7 @@ func _time_text(seconds: float) -> String:
 
 func _completed_count() -> int:
 	var count: int = 0
-	for i in range(4):
+	for i in range(STAGES.size()):
 		if completed & (1 << i):
 			count += 1
 	return count
@@ -365,8 +378,8 @@ func _load_progress() -> void:
 	var config := ConfigFile.new()
 	if config.load(save_path) != OK:
 		return
-	completed = clampi(int(config.get_value("progress", "completed", 0)), 0, 15)
-	for i in range(4):
+	completed = clampi(int(config.get_value("progress", "completed", 0)), 0, (1 << STAGES.size()) - 1)
+	for i in range(STAGES.size()):
 		attempts[i] = maxi(0, int(config.get_value("attempts", str(i), 0)))
 
 
@@ -375,7 +388,7 @@ func _save_progress() -> void:
 		return
 	var config := ConfigFile.new()
 	config.set_value("progress", "completed", completed)
-	for i in range(4):
+	for i in range(STAGES.size()):
 		config.set_value("attempts", str(i), attempts[i])
 	var error: Error = config.save(save_path)
 	if error != OK:

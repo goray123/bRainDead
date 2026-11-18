@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="StageDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/stage_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+number = 5
+title = "바람이 이상해"
+description = "달리다 보면 손이 거짓말을 합니다.\n보라색 구간에서는 A가 오른바람, D가 왼바람."
+short_label = "REVERSE"
+length = 3000.0
+walk_speed = 86.0
+run_speed = 205.0
+run_at = 780.0
+run_prep_duration = 1.0
+invert_from = 1250.0
+invert_to = 2000.0
+sign_rects = Array[Rect2]([Rect2(1100, 265, 200, 42), Rect2(1700, 250, 220, 42), Rect2(2350, 275, 200, 42)])
+accent = Color(0.62, 0.80, 0.98, 1)
