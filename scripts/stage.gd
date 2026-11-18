@@ -4,6 +4,7 @@ extends Node2D
 signal failed
 signal cleared
 signal behavior_changed(value: String)
+signal controls_inverted(inverted: bool)
 
 const MINT_SCENE: PackedScene = preload("res://scenes/mint.tscn")
 const UMBRELLA_SCENE: PackedScene = preload("res://scenes/umbrella.tscn")
@@ -19,6 +20,7 @@ var elapsed: float = 0.0
 var completion_pending: bool = false
 var fail_pending: bool = false
 var wind_override: float = NAN
+var inverted: bool = false
 
 
 func configure(data: StageDefinition, title_preview: bool = false) -> void:
@@ -92,7 +94,12 @@ func _physics_process(delta: float) -> void:
 		mint.advance(delta)
 		for person in crowd:
 			person.advance(elapsed)
-		umbrella.wind = Input.get_axis("wind_left", "wind_right") if is_nan(wind_override) else wind_override
+		var axis: float = Input.get_axis("wind_left", "wind_right") if is_nan(wind_override) else wind_override
+		var now_inverted: bool = definition.invert_from >= 0.0 and mint.position.x >= definition.invert_from and mint.position.x < definition.invert_to
+		if now_inverted != inverted:
+			inverted = now_inverted
+			controls_inverted.emit(inverted)
+		umbrella.wind = -axis if inverted else axis
 		camera.position.x = clampf(mint.position.x + 310.0, 640.0, definition.length - 640.0)
 		camera.force_update_scroll()
 	rain.advance(delta, camera.position.x - 640.0, camera.position.x + 640.0)

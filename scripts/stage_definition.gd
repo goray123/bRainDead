@@ -16,4 +16,7 @@ extends Resource
 @export var umbrella_start: Vector2 = Vector2(190, 425)
 @export var sign_rects: Array[Rect2] = []
 @export var crowd_count: int = 0
+## Controls flip inside [invert_from, invert_to): A blows right, D blows left.
+@export var invert_from: float = -1.0
+@export var invert_to: float = -1.0
 @export var accent: Color = Color("8fdec6")

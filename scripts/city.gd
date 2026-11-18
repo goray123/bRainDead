@@ -62,6 +62,14 @@ func _draw() -> void:
 	_draw_text(Vector2(goal_x - 27, 473), "HOME", 15, Color("f0d2a1"))
 	for i in range(definition.sign_rects.size()):
 		_draw_sign(definition.sign_rects[i], i)
+	# Inverted-controls zone, marked on the ground so the flip never feels like a bug.
+	if definition.invert_from >= 0.0:
+		var zone := Rect2(definition.invert_from, 596, definition.invert_to - definition.invert_from, 9)
+		draw_rect(zone, Color("7e6fd0", 0.55))
+		draw_rect(Rect2(definition.invert_from, 596, 5, 124), Color("9a8ce0", 0.75))
+		draw_rect(Rect2(definition.invert_to - 5, 596, 5, 124), Color("9a8ce0", 0.75))
+		_draw_text(Vector2(definition.invert_from + 14, 588), "⇄ REVERSE", 15, Color("cdc4f2"))
+		_draw_text(Vector2(definition.invert_to + 14, 588), "NORMAL", 15, Color("9fd8c4"))
 	# Fixed trip hazard, visible but easy to miss.
 	if definition.trip_at > 0.0:
 		draw_colored_polygon(PackedVector2Array([Vector2(definition.trip_at - 12, 597), Vector2(definition.trip_at - 5, 588), Vector2(definition.trip_at + 12, 592), Vector2(definition.trip_at + 17, 598)]), Color("71827f"))
